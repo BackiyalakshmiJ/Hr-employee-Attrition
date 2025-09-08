@@ -76,8 +76,10 @@ try:
         if col not in input_df.columns:
             input_df[col] = 0
 
-    # Ensure columns are in the right order
-    input_df = input_df.reindex(columns=numeric_cols + [col for col in input_df.columns if col not in numeric_cols], fill_value=0)
+    # Ensure all columns are present for encoding
+    for col in encoders.keys():
+        if col not in input_df.columns:
+            input_df[col] = "Unknown"  # or some default category
 
 except Exception as e:
     st.error(f"Error adding missing columns: {e}")
@@ -93,7 +95,7 @@ try:
             le = encoders[column]
             input_df[column] = le.transform(input_df[column])
 
-    # Scale numeric columns
+    # Scale numeric columns only
     input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 
 except Exception as e:
