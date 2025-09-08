@@ -1,20 +1,28 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import pickle
 
 # -------------------------
-# Load Model and Scaler
+# Load Model, Scaler, and Encoders
 # -------------------------
 try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
         model = pickle.load(f)
 
     with open("scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+        scaler_dict = pickle.load(f)
+        scaler = scaler_dict["scaler"]
+        numeric_cols = scaler_dict["numeric_cols"]
+
+    with open("label_encoders.pkl", "rb") as f:
+        encoders = pickle.load(f)
 
 except FileNotFoundError as e:
     st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
+    st.stop()
+
+except Exception as e:
+    st.error(f"Error loading files: {e}")
     st.stop()
 
 # -------------------------
@@ -59,35 +67,17 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Manual Mapping of Categorical Variables
+# Preprocess the input
 # -------------------------
 try:
-    business_travel_map = {"Non-Travel": 0, "Travel_Rarely": 1, "Travel_Frequently": 2}
-    department_map = {"Sales": 0, "Research & Development": 1, "Human Resources": 2}
-    educationfield_map = {
-        "Life Sciences": 0, "Medical": 1, "Marketing": 2,
-        "Technical Degree": 3, "Other": 4, "Human Resources": 5
-    }
-    gender_map = {"Male": 0, "Female": 1}
-    jobrole_map = {
-        "Sales Executive": 0, "Research Scientist": 1, "Laboratory Technician": 2,
-        "Manufacturing Director": 3, "Healthcare Representative": 4,
-        "Manager": 5, "Sales Representative": 6, "Research Director": 7,
-        "Human Resources": 8
-    }
-    maritalstatus_map = {"Single": 0, "Married": 1, "Divorced": 2}
-    overtime_map = {"Yes": 1, "No": 0}
+    # Encode categorical columns
+    for column in encoders.keys():
+        if column in input_df.columns:
+            le = encoders[column]
+            input_df[column] = le.transform(input_df[column])
 
-    input_df["BusinessTravel"] = input_df["BusinessTravel"].map(business_travel_map)
-    input_df["Department"] = input_df["Department"].map(department_map)
-    input_df["EducationField"] = input_df["EducationField"].map(educationfield_map)
-    input_df["Gender"] = input_df["Gender"].map(gender_map)
-    input_df["JobRole"] = input_df["JobRole"].map(jobrole_map)
-    input_df["MaritalStatus"] = input_df["MaritalStatus"].map(maritalstatus_map)
-    input_df["OverTime"] = input_df["OverTime"].map(overtime_map)
-
-    # Scale the input data
-    input_df_scaled = scaler.transform(input_df)
+    # Scale numeric columns
+    input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 
 except Exception as e:
     st.error(f"Error in preprocessing: {e}")
@@ -103,14 +93,14 @@ st.write(input_df)
 # Prediction
 # -------------------------
 try:
-    prediction = model.predict(input_df_scaled)
-    prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
+    prediction = model.predict(input_df)
+    prediction_proba = model.predict_proba(input_df)[:, 1]
 
     st.subheader("Prediction:")
-    result = "Likely to Leave" if prediction[0] == 1 else "Likely to Stay"
-    st.write(result)
+    st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
 
     st.subheader("Prediction Probability:")
     st.write(f"{prediction_proba[0]*100:.2f}%")
 except Exception as e:
-    st.error(f"Error in making prediction: {e}")
+    st.error(f"Error during prediction: {e}")
+    st.stop()
