@@ -2,12 +2,29 @@
 import streamlit as st
 import pandas as pd
 import pickle
+import os
+
+st.set_page_config(page_title="HR Employee Attrition Prediction", layout="wide")
 
 # -------------------------
-# Load the trained CatBoost model
+# Load CatBoost model
 # -------------------------
-with open("cgb_hr_attrition_best_model.pkl", "rb") as f:
+model_path = "cgb_hr_attrition_best_model.pkl"
+preprocessing_path = "preprocessing_tools.pkl"  # Optional: if you saved scaler/label encoders
+
+if not os.path.exists(model_path):
+    st.error(f"Model file not found: {model_path}")
+    st.stop()
+
+with open(model_path, "rb") as f:
     model = pickle.load(f)
+
+# Load preprocessing tools if available
+if os.path.exists(preprocessing_path):
+    with open(preprocessing_path, "rb") as f:
+        preprocessing_tools = pickle.load(f)
+else:
+    preprocessing_tools = None
 
 st.title("HR Employee Attrition Prediction")
 st.write("Predict whether an employee is likely to leave the company.")
@@ -47,18 +64,36 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
+# Apply preprocessing if available
+# -------------------------
+if preprocessing_tools is not None:
+    label_encoders = preprocessing_tools.get("label_encoders", {})
+    scaler = preprocessing_tools.get("scaler", None)
+    numeric_cols = preprocessing_tools.get("numeric_cols", [])
+
+    # Encode categorical columns
+    for col, le in label_encoders.items():
+        if col in input_df.columns:
+            input_df[col] = le.transform(input_df[col])
+    
+    # Scale numeric columns
+    if scaler is not None and numeric_cols:
+        input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
+
+# -------------------------
 # Display input
 # -------------------------
-st.subheader("Employee Input:")
+st.subheader("Employee Input")
 st.write(input_df)
 
 # -------------------------
-# Prediction
+# Make prediction
 # -------------------------
 prediction = model.predict(input_df)
 prediction_proba = model.predict_proba(input_df)[:, 1]
 
-st.subheader("Prediction:")
+st.subheader("Prediction")
 st.write("Likely to Leave" if prediction[0]==1 else "Likely to Stay")
-st.subheader("Prediction Probability:")
+
+st.subheader("Prediction Probability")
 st.write(f"{prediction_proba[0]*100:.2f}%")
