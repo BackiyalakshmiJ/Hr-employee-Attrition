@@ -2,15 +2,13 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import numpy as np
 
 # -------------------------
-# Load trained CatBoost model
+# 1. Load the trained model and preprocessing tools
 # -------------------------
 with open("best_hr_attrition_model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# Load preprocessing objects
 with open("preprocessed_WA_Fn-UseC_-HR-Employee-Attrition.csv.pkl", "rb") as f:
     preprocessing = pickle.load(f)
 
@@ -19,15 +17,16 @@ label_encoders = preprocessing["label_encoders"]
 numeric_cols = preprocessing["numeric_cols"]
 
 # -------------------------
-# Streamlit App
+# 2. App title
 # -------------------------
 st.title("HR Employee Attrition Prediction")
 st.write("Predict whether an employee is likely to leave the company.")
 
 # -------------------------
-# Input form for single employee
+# 3. Sidebar input form for a single employee
 # -------------------------
 st.sidebar.header("Employee Details")
+
 def user_input_features():
     Age = st.sidebar.number_input("Age", 18, 60, 30)
     BusinessTravel = st.sidebar.selectbox("Business Travel", ["Non-Travel", "Travel_Rarely", "Travel_Frequently"])
@@ -36,8 +35,9 @@ def user_input_features():
     Education = st.sidebar.selectbox("Education", [1, 2, 3, 4, 5])
     EducationField = st.sidebar.selectbox("Education Field", ["Life Sciences", "Medical", "Marketing", "Technical Degree", "Other", "Human Resources"])
     Gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
-    JobRole = st.sidebar.selectbox("Job Role", ["Sales Executive", "Research Scientist", "Laboratory Technician", "Manufacturing Director",
-                                                "Healthcare Representative", "Manager", "Sales Representative", "Research Director", "Human Resources"])
+    JobRole = st.sidebar.selectbox("Job Role", ["Sales Executive", "Research Scientist", "Laboratory Technician",
+                                                "Manufacturing Director","Healthcare Representative","Manager",
+                                                "Sales Representative","Research Director","Human Resources"])
     MaritalStatus = st.sidebar.selectbox("Marital Status", ["Single", "Married", "Divorced"])
     OverTime = st.sidebar.selectbox("OverTime", ["Yes", "No"])
 
@@ -59,7 +59,7 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Apply preprocessing
+# 4. Preprocess input
 # -------------------------
 # Encode categorical columns
 for col, le in label_encoders.items():
@@ -70,18 +70,19 @@ for col, le in label_encoders.items():
 input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 
 # -------------------------
-# Display input
+# 5. Display input
 # -------------------------
 st.subheader("Employee Input:")
 st.write(input_df)
 
 # -------------------------
-# Prediction
+# 6. Prediction
 # -------------------------
 prediction = model.predict(input_df)
 prediction_proba = model.predict_proba(input_df)[:, 1]
 
 st.subheader("Prediction:")
 st.write("Likely to Leave" if prediction[0]==1 else "Likely to Stay")
+
 st.subheader("Prediction Probability:")
 st.write(f"{prediction_proba[0]*100:.2f}%")
