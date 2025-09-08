@@ -4,29 +4,29 @@ import pandas as pd
 import pickle
 
 # -------------------------
-# 1. Load the trained model and preprocessing tools
+# Load Preprocessing Pipeline & Trained Model
 # -------------------------
-with open("best_hr_attrition_model.pkl", "rb") as f:
-    model = pickle.load(f)
+try:
+    with open("preprocessing.pkl", "rb") as f:
+        preprocessing = pickle.load(f)
+except FileNotFoundError:
+    st.error("Preprocessing file not found: preprocessing.pkl. Make sure it's in the same folder as app.py.")
+    st.stop()
 
-with open("preprocessed_WA_Fn-UseC_-HR-Employee-Attrition.csv.pkl", "rb") as f:
-    preprocessing = pickle.load(f)
+try:
+    with open("best_hr_attrition_model.pkl", "rb") as f:
+        model = pickle.load(f)
+except FileNotFoundError:
+    st.error("Model file not found: best_hr_attrition_model.pkl. Make sure it's in the same folder as app.py.")
+    st.stop()
 
-scaler = preprocessing["scaler"]
-label_encoders = preprocessing["label_encoders"]
-numeric_cols = preprocessing["numeric_cols"]
-
-# -------------------------
-# 2. App title
-# -------------------------
 st.title("HR Employee Attrition Prediction")
 st.write("Predict whether an employee is likely to leave the company.")
 
 # -------------------------
-# 3. Sidebar input form for a single employee
+# Input form for single employee
 # -------------------------
 st.sidebar.header("Employee Details")
-
 def user_input_features():
     Age = st.sidebar.number_input("Age", 18, 60, 30)
     BusinessTravel = st.sidebar.selectbox("Business Travel", ["Non-Travel", "Travel_Rarely", "Travel_Frequently"])
@@ -35,12 +35,11 @@ def user_input_features():
     Education = st.sidebar.selectbox("Education", [1, 2, 3, 4, 5])
     EducationField = st.sidebar.selectbox("Education Field", ["Life Sciences", "Medical", "Marketing", "Technical Degree", "Other", "Human Resources"])
     Gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
-    JobRole = st.sidebar.selectbox("Job Role", ["Sales Executive", "Research Scientist", "Laboratory Technician",
-                                                "Manufacturing Director","Healthcare Representative","Manager",
-                                                "Sales Representative","Research Director","Human Resources"])
+    JobRole = st.sidebar.selectbox("Job Role", ["Sales Executive", "Research Scientist", "Laboratory Technician", "Manufacturing Director",
+                                                "Healthcare Representative", "Manager", "Sales Representative", "Research Director", "Human Resources"])
     MaritalStatus = st.sidebar.selectbox("Marital Status", ["Single", "Married", "Divorced"])
     OverTime = st.sidebar.selectbox("OverTime", ["Yes", "No"])
-
+    
     data = {
         "Age": Age,
         "BusinessTravel": BusinessTravel,
@@ -59,27 +58,29 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# 4. Preprocess input
+# Preprocess input
 # -------------------------
-# Encode categorical columns
-for col, le in label_encoders.items():
-    if col in input_df.columns:
-        input_df[col] = le.transform(input_df[col])
-
-# Scale numeric columns
-input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
+try:
+    input_processed = preprocessing.transform(input_df)
+except Exception as e:
+    st.error(f"Error during preprocessing: {e}")
+    st.stop()
 
 # -------------------------
-# 5. Display input
+# Prediction
+# -------------------------
+try:
+    prediction = model.predict(input_processed)
+    prediction_proba = model.predict_proba(input_processed)[:, 1]
+except Exception as e:
+    st.error(f"Error during prediction: {e}")
+    st.stop()
+
+# -------------------------
+# Display Results
 # -------------------------
 st.subheader("Employee Input:")
 st.write(input_df)
-
-# -------------------------
-# 6. Prediction
-# -------------------------
-prediction = model.predict(input_df)
-prediction_proba = model.predict_proba(input_df)[:, 1]
 
 st.subheader("Prediction:")
 st.write("Likely to Leave" if prediction[0]==1 else "Likely to Stay")
