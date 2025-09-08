@@ -1,17 +1,23 @@
-# Byte-compiled / optimized / DLL files
+# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
 
 # Jupyter Notebook checkpoints
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
-# Python environment
+# Environment files
+.env
+*.env
 venv/
 env/
-*.egg-info/
-dist/
-build/
+
+# VSCode settings
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
 
 # Dataset files
 *.csv
@@ -23,13 +29,6 @@ build/
 
 # Streamlit cache
 .cache/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# VS Code settings
-.vscode/
 
 # Logs
 *.log
