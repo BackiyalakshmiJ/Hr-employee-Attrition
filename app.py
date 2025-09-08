@@ -10,7 +10,7 @@ try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
         model = pickle.load(f)
 
-    with open("scaler.pkl", "rb") as f:
+    with open("scaler.pkl", "wb") as f:
         scaler = pickle.load(f)
 
 except FileNotFoundError as e:
