@@ -9,7 +9,7 @@ st.set_page_config(page_title="HR Employee Attrition Prediction", layout="wide")
 # -------------------------
 # Load CatBoost model
 # -------------------------
-model_path = "cgb_hr_attrition_best_model.pkl"
+model_path = "best_hr_attrition_model.pkl"
 preprocessing_path = "preprocessing_tools.pkl"  # Optional: if you saved scaler/label encoders
 
 if not os.path.exists(model_path):
