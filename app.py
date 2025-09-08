@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import pickle
 
 # -------------------------
@@ -65,6 +66,22 @@ def user_input_features():
     return features
 
 input_df = user_input_features()
+
+# -------------------------
+# Add missing columns with default values
+# -------------------------
+try:
+    # Add missing numeric columns with zeros
+    for col in numeric_cols:
+        if col not in input_df.columns:
+            input_df[col] = 0
+
+    # Ensure columns are in the right order
+    input_df = input_df.reindex(columns=numeric_cols + [col for col in input_df.columns if col not in numeric_cols], fill_value=0)
+
+except Exception as e:
+    st.error(f"Error adding missing columns: {e}")
+    st.stop()
 
 # -------------------------
 # Preprocess the input
