@@ -65,9 +65,9 @@ input_df = user_input_features()
 # Preprocess the input
 # -------------------------
 try:
-    for column in encoders:
+    for column in encoders.keys():
         if column in input_df.columns:
-            le = encoders[column]
+            le = encoders[column]  # Extract the encoder for this column
             input_df[column] = le.transform(input_df[column])
 
     input_df_scaled = scaler.transform(input_df)
