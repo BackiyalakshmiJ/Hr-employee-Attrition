@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 # -------------------------
-# Load Model, Scaler, and Encoders
+# Load Model and Scaler
 # -------------------------
 try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
@@ -13,16 +13,20 @@ try:
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
 
-    with open("label_encoders.pkl", "rb") as f:
-        encoders = pickle.load(f)
-
 except FileNotFoundError as e:
     st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
     st.stop()
 
-# Show the structure of encoders to debug
-st.write("Encoders loaded:")
-st.write(encoders)
+# -------------------------
+# Load target encoder for displaying results
+# -------------------------
+try:
+    with open("label_encoders.pkl", "rb") as f:
+        encoders = pickle.load(f)
+    attrition_encoder = encoders.get("Attrition", None)
+except Exception as e:
+    st.error(f"Error loading label encoders: {e}")
+    attrition_encoder = None
 
 # -------------------------
 # App Header
@@ -60,29 +64,40 @@ def user_input_features():
         "MaritalStatus": MaritalStatus,
         "OverTime": OverTime
     }
-    features = pd.DataFrame(data, index=[0])
-    return features
+    return pd.DataFrame(data, index=[0])
 
 input_df = user_input_features()
 
 # -------------------------
-# Preprocess the input
+# Map categorical features manually
 # -------------------------
 try:
-    # First, check how encoders is structured
-    if isinstance(encoders, dict):
-        st.write("Encoders is a dictionary with keys:", list(encoders.keys()))
-        
-        # If 'encoders' is nested, access it like encoders['encoders']
-        if 'encoders' in encoders:
-            encoders = encoders['encoders']
-            st.write("Accessed nested encoders:", list(encoders.keys()))
+    # Define mappings same as used during training
+    business_travel_map = {"Non-Travel": 0, "Travel_Rarely": 1, "Travel_Frequently": 2}
+    department_map = {"Sales": 0, "Research & Development": 1, "Human Resources": 2}
+    educationfield_map = {
+        "Life Sciences": 0, "Medical": 1, "Marketing": 2,
+        "Technical Degree": 3, "Other": 4, "Human Resources": 5
+    }
+    gender_map = {"Male": 0, "Female": 1}
+    jobrole_map = {
+        "Sales Executive": 0, "Research Scientist": 1, "Laboratory Technician": 2,
+        "Manufacturing Director": 3, "Healthcare Representative": 4,
+        "Manager": 5, "Sales Representative": 6, "Research Director": 7,
+        "Human Resources": 8
+    }
+    maritalstatus_map = {"Single": 0, "Married": 1, "Divorced": 2}
+    overtime_map = {"Yes": 1, "No": 0}
 
-    for column in encoders.keys():
-        if column in input_df.columns:
-            le = encoders[column]
-            input_df[column] = le.transform(input_df[column])
+    input_df["BusinessTravel"] = input_df["BusinessTravel"].map(business_travel_map)
+    input_df["Department"] = input_df["Department"].map(department_map)
+    input_df["EducationField"] = input_df["EducationField"].map(educationfield_map)
+    input_df["Gender"] = input_df["Gender"].map(gender_map)
+    input_df["JobRole"] = input_df["JobRole"].map(jobrole_map)
+    input_df["MaritalStatus"] = input_df["MaritalStatus"].map(maritalstatus_map)
+    input_df["OverTime"] = input_df["OverTime"].map(overtime_map)
 
+    # Scale the numeric data
     input_df_scaled = scaler.transform(input_df)
 
 except Exception as e:
@@ -102,7 +117,18 @@ prediction = model.predict(input_df_scaled)
 prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
 
 st.subheader("Prediction:")
-st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
+result = "Likely to Leave" if prediction[0] == 1 else "Likely to Stay"
+st.write(result)
 
 st.subheader("Prediction Probability:")
 st.write(f"{prediction_proba[0]*100:.2f}%")
+
+# -------------------------
+# Optionally decode the target label if encoder is available
+# -------------------------
+if attrition_encoder is not None:
+    try:
+        label = attrition_encoder.inverse_transform(prediction)[0]
+        st.write(f"Decoded prediction: {label}")
+    except Exception as e:
+        st.write("Cannot decode prediction:", e)
