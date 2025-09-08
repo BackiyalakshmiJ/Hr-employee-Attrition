@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 # -------------------------
-# Load Model and Scaler
+# Load Model, Scaler, and Encoders
 # -------------------------
 try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
@@ -13,20 +13,12 @@ try:
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
 
+    with open("label_encoders.pkl", "rb") as f:
+        encoders = pickle.load(f)
+
 except FileNotFoundError as e:
     st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
     st.stop()
-
-# -------------------------
-# Load target encoder for displaying results
-# -------------------------
-try:
-    with open("label_encoders.pkl", "rb") as f:
-        encoders = pickle.load(f)
-    attrition_encoder = encoders.get("Attrition", None)
-except Exception as e:
-    st.error(f"Error loading label encoders: {e}")
-    attrition_encoder = None
 
 # -------------------------
 # App Header
@@ -64,12 +56,13 @@ def user_input_features():
         "MaritalStatus": MaritalStatus,
         "OverTime": OverTime
     }
-    return pd.DataFrame(data, index=[0])
+    features = pd.DataFrame(data, index=[0])
+    return features
 
 input_df = user_input_features()
 
 # -------------------------
-# Map categorical features manually
+# Preprocess the input
 # -------------------------
 try:
     # Define mappings same as used during training
@@ -117,18 +110,7 @@ prediction = model.predict(input_df_scaled)
 prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
 
 st.subheader("Prediction:")
-result = "Likely to Leave" if prediction[0] == 1 else "Likely to Stay"
-st.write(result)
+st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
 
 st.subheader("Prediction Probability:")
 st.write(f"{prediction_proba[0]*100:.2f}%")
-
-# -------------------------
-# Optionally decode the target label if encoder is available
-# -------------------------
-if attrition_encoder is not None:
-    try:
-        label = attrition_encoder.inverse_transform(prediction)[0]
-        st.write(f"Decoded prediction: {label}")
-    except Exception as e:
-        st.write("Cannot decode prediction:", e)
