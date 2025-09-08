@@ -20,6 +20,10 @@ except FileNotFoundError as e:
     st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
     st.stop()
 
+# Show the structure of encoders to debug
+st.write("Encoders loaded:")
+st.write(encoders)
+
 # -------------------------
 # App Header
 # -------------------------
@@ -65,9 +69,18 @@ input_df = user_input_features()
 # Preprocess the input
 # -------------------------
 try:
+    # First, check how encoders is structured
+    if isinstance(encoders, dict):
+        st.write("Encoders is a dictionary with keys:", list(encoders.keys()))
+        
+        # If 'encoders' is nested, access it like encoders['encoders']
+        if 'encoders' in encoders:
+            encoders = encoders['encoders']
+            st.write("Accessed nested encoders:", list(encoders.keys()))
+
     for column in encoders.keys():
         if column in input_df.columns:
-            le = encoders[column]  # Extract the encoder for this column
+            le = encoders[column]
             input_df[column] = le.transform(input_df[column])
 
     input_df_scaled = scaler.transform(input_df)
