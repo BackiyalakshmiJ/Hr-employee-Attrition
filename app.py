@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 # -------------------------
-# Load Model, Scaler, and Encoders
+# Load Model and Scaler
 # -------------------------
 try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
@@ -12,9 +12,6 @@ try:
 
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
-
-    with open("label_encoders.pkl", "rb") as f:
-        encoders = pickle.load(f)
 
 except FileNotFoundError as e:
     st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
@@ -62,10 +59,9 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Preprocess the input
+# Manual Mapping of Categorical Variables
 # -------------------------
 try:
-    # Define mappings same as used during training
     business_travel_map = {"Non-Travel": 0, "Travel_Rarely": 1, "Travel_Frequently": 2}
     department_map = {"Sales": 0, "Research & Development": 1, "Human Resources": 2}
     educationfield_map = {
@@ -90,7 +86,7 @@ try:
     input_df["MaritalStatus"] = input_df["MaritalStatus"].map(maritalstatus_map)
     input_df["OverTime"] = input_df["OverTime"].map(overtime_map)
 
-    # Scale the numeric data
+    # Scale the input data
     input_df_scaled = scaler.transform(input_df)
 
 except Exception as e:
@@ -106,11 +102,15 @@ st.write(input_df)
 # -------------------------
 # Prediction
 # -------------------------
-prediction = model.predict(input_df_scaled)
-prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
+try:
+    prediction = model.predict(input_df_scaled)
+    prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
 
-st.subheader("Prediction:")
-st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
+    st.subheader("Prediction:")
+    result = "Likely to Leave" if prediction[0] == 1 else "Likely to Stay"
+    st.write(result)
 
-st.subheader("Prediction Probability:")
-st.write(f"{prediction_proba[0]*100:.2f}%")
+    st.subheader("Prediction Probability:")
+    st.write(f"{prediction_proba[0]*100:.2f}%")
+except Exception as e:
+    st.error(f"Error in making prediction: {e}")
