@@ -11,17 +11,16 @@ try:
         model = pickle.load(f)
 
     with open("scaler.pkl", "rb") as f:
-        scaler_dict = pickle.load(f)
-        scaler = scaler_dict["scaler"]
-        numeric_cols = scaler_dict["numeric_cols"]
+        scaler_data = pickle.load(f)
+        scaler = scaler_data["scaler"]
+        numeric_cols = scaler_data["numeric_cols"]
 
     with open("label_encoders.pkl", "rb") as f:
         encoders = pickle.load(f)
 
 except FileNotFoundError as e:
-    st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
+    st.error(f"File not found: {e.filename}. Make sure all required files are in the same folder as app.py.")
     st.stop()
-
 except Exception as e:
     st.error(f"Error loading files: {e}")
     st.stop()
@@ -68,38 +67,38 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Add missing columns with default values
+# Add missing numeric columns with default values
+# -------------------------
+for col in numeric_cols:
+    if col not in input_df.columns:
+        input_df[col] = 0  # or another sensible default
+
+# -------------------------
+# Encode categorical columns
 # -------------------------
 try:
-    # Add missing numeric columns with zeros
-    for col in numeric_cols:
-        if col not in input_df.columns:
-            input_df[col] = 0
-
-    # Ensure all columns are present for encoding
-    for col in encoders.keys():
-        if col not in input_df.columns:
-            input_df[col] = "Unknown"  # or some default category
-
-except Exception as e:
-    st.error(f"Error adding missing columns: {e}")
-    st.stop()
-
-# -------------------------
-# Preprocess the input
-# -------------------------
-try:
-    # Encode categorical columns
-    for column in encoders.keys():
-        if column in input_df.columns:
-            le = encoders[column]
-            input_df[column] = le.transform(input_df[column])
-
-    # Scale numeric columns only
-    input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
+    for col in encoders:
+        if col in input_df.columns:
+            le = encoders[col]
+            valid_classes = le.classes_
+            val = input_df.at[0, col]
+            if val in valid_classes:
+                input_df[col] = le.transform([val])[0]
+            else:
+                # Fill with most frequent category if unseen
+                input_df[col] = le.transform([valid_classes[0]])[0]
 
 except Exception as e:
     st.error(f"Error in preprocessing: {e}")
+    st.stop()
+
+# -------------------------
+# Scale numeric columns
+# -------------------------
+try:
+    input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
+except Exception as e:
+    st.error(f"Error scaling data: {e}")
     st.stop()
 
 # -------------------------
@@ -114,12 +113,12 @@ st.write(input_df)
 try:
     prediction = model.predict(input_df)
     prediction_proba = model.predict_proba(input_df)[:, 1]
-
-    st.subheader("Prediction:")
-    st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
-
-    st.subheader("Prediction Probability:")
-    st.write(f"{prediction_proba[0]*100:.2f}%")
 except Exception as e:
-    st.error(f"Error during prediction: {e}")
+    st.error(f"Error making prediction: {e}")
     st.stop()
+
+st.subheader("Prediction:")
+st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
+
+st.subheader("Prediction Probability:")
+st.write(f"{prediction_proba[0]*100:.2f}%")
