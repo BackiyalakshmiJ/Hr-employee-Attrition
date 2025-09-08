@@ -1,32 +1,36 @@
-# app.py
 import streamlit as st
 import pandas as pd
+import numpy as np
 import pickle
 
 # -------------------------
-# Load Preprocessing Pipeline & Trained Model
+# Load Model, Scaler, and Encoders
 # -------------------------
-try:
-    with open("preprocessing.pkl", "rb") as f:
-        preprocessing = pickle.load(f)
-except FileNotFoundError:
-    st.error("Preprocessing file not found: preprocessing.pkl. Make sure it's in the same folder as app.py.")
-    st.stop()
-
 try:
     with open("best_hr_attrition_model.pkl", "rb") as f:
         model = pickle.load(f)
-except FileNotFoundError:
-    st.error("Model file not found: best_hr_attrition_model.pkl. Make sure it's in the same folder as app.py.")
+
+    with open("scaler.pkl", "rb") as f:
+        scaler = pickle.load(f)
+
+    with open("label_encoders.pkl", "rb") as f:
+        encoders = pickle.load(f)
+
+except FileNotFoundError as e:
+    st.error(f"File not found: {e.filename}. Please make sure all required files are in the same folder as app.py.")
     st.stop()
 
+# -------------------------
+# App Header
+# -------------------------
 st.title("HR Employee Attrition Prediction")
-st.write("Predict whether an employee is likely to leave the company.")
+st.write("Fill in employee details to predict whether they are likely to leave the company.")
 
 # -------------------------
-# Input form for single employee
+# Input form
 # -------------------------
 st.sidebar.header("Employee Details")
+
 def user_input_features():
     Age = st.sidebar.number_input("Age", 18, 60, 30)
     BusinessTravel = st.sidebar.selectbox("Business Travel", ["Non-Travel", "Travel_Rarely", "Travel_Frequently"])
@@ -39,7 +43,7 @@ def user_input_features():
                                                 "Healthcare Representative", "Manager", "Sales Representative", "Research Director", "Human Resources"])
     MaritalStatus = st.sidebar.selectbox("Marital Status", ["Single", "Married", "Divorced"])
     OverTime = st.sidebar.selectbox("OverTime", ["Yes", "No"])
-    
+
     data = {
         "Age": Age,
         "BusinessTravel": BusinessTravel,
@@ -58,32 +62,34 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Preprocess input
+# Preprocess the input
 # -------------------------
 try:
-    input_processed = preprocessing.transform(input_df)
+    for column in encoders:
+        if column in input_df.columns:
+            le = encoders[column]
+            input_df[column] = le.transform(input_df[column])
+
+    input_df_scaled = scaler.transform(input_df)
+
 except Exception as e:
-    st.error(f"Error during preprocessing: {e}")
+    st.error(f"Error in preprocessing: {e}")
     st.stop()
 
 # -------------------------
-# Prediction
-# -------------------------
-try:
-    prediction = model.predict(input_processed)
-    prediction_proba = model.predict_proba(input_processed)[:, 1]
-except Exception as e:
-    st.error(f"Error during prediction: {e}")
-    st.stop()
-
-# -------------------------
-# Display Results
+# Display input
 # -------------------------
 st.subheader("Employee Input:")
 st.write(input_df)
 
+# -------------------------
+# Prediction
+# -------------------------
+prediction = model.predict(input_df_scaled)
+prediction_proba = model.predict_proba(input_df_scaled)[:, 1]
+
 st.subheader("Prediction:")
-st.write("Likely to Leave" if prediction[0]==1 else "Likely to Stay")
+st.write("Likely to Leave" if prediction[0] == 1 else "Likely to Stay")
 
 st.subheader("Prediction Probability:")
 st.write(f"{prediction_proba[0]*100:.2f}%")
