@@ -32,7 +32,7 @@ st.title("HR Employee Attrition Prediction")
 st.write("Fill in employee details to predict whether they are likely to leave the company.")
 
 # -------------------------
-# Input form
+# Input Form
 # -------------------------
 st.sidebar.header("Employee Details")
 
@@ -67,13 +67,6 @@ def user_input_features():
 input_df = user_input_features()
 
 # -------------------------
-# Add missing numeric columns with default values
-# -------------------------
-for col in numeric_cols:
-    if col not in input_df.columns:
-        input_df[col] = 0  # or another sensible default
-
-# -------------------------
 # Encode categorical columns
 # -------------------------
 try:
@@ -85,24 +78,27 @@ try:
             if val in valid_classes:
                 input_df[col] = le.transform([val])[0]
             else:
-                # Fill with most frequent category if unseen
+                # Handle unseen category by mapping to most frequent or default class
                 input_df[col] = le.transform([valid_classes[0]])[0]
-
 except Exception as e:
     st.error(f"Error in preprocessing: {e}")
     st.stop()
 
 # -------------------------
-# Scale numeric columns
+# Ensure only numeric columns are scaled
 # -------------------------
 try:
+    # Check all columns to be scaled are numeric
+    for col in numeric_cols:
+        if col not in input_df.columns:
+            input_df[col] = 0  # Default value if missing
     input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 except Exception as e:
     st.error(f"Error scaling data: {e}")
     st.stop()
 
 # -------------------------
-# Display input
+# Display Input
 # -------------------------
 st.subheader("Employee Input:")
 st.write(input_df)
